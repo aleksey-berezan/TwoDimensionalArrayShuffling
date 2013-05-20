@@ -51,6 +51,16 @@ namespace ShuffleTwoDimensionalArrayConsole
 			list2.Add(item);
 			return list2;
 		}
+
+		public static int Rows(this string[,] array)
+		{
+			return array.GetLength(0);
+		}
+
+		public static int Columns(this string[,] array)
+		{
+			return array.GetLength(1);
+		}
 	}
 
 	class Program
@@ -66,12 +76,12 @@ namespace ShuffleTwoDimensionalArrayConsole
 			Console.WriteLine(string.Join(", ", string.Join(", ", input.Cast<string>())));
 
 			bool hasErrrors = false;
-			int MAX_ITERATIONS = 10000;
+			int MAX_ITERATIONS = 100000;
 			for (int i = 1; i <= MAX_ITERATIONS; i++)
 			{
 				try
 				{
-					string[,] shuffled = Shuffle(input);
+					string[,] shuffled = Shuffle2(input);
 
 					//Console.WriteLine("Shuffled:");
 					//Console.WriteLine(string.Join(", ", string.Join(", ", shuffled.Cast<string>())));
@@ -90,6 +100,8 @@ namespace ShuffleTwoDimensionalArrayConsole
 			Console.WriteLine("Completed with {0}", (hasErrrors ? "errors" : "successfully"));
 		}
 
+		#region Solution_1
+
 		public static string[,] Shuffle(string[,] array)
 		{
 			List<PackedItem> packed = Pack(array);
@@ -104,8 +116,6 @@ namespace ShuffleTwoDimensionalArrayConsole
 		private static List<PackedItem> Pack(string[,] array)
 		{
 			var list = new List<PackedItem>();
-
-
 
 			for (int i = 0; i < array.GetLength(0); i++)
 			{
@@ -235,6 +245,81 @@ namespace ShuffleTwoDimensionalArrayConsole
 				Console.CursorLeft = oldLeft;
 			}
 		}
+
+		#endregion
+
+		#region Solution_2
+
+		public static string[,] Shuffle2(string[,] array)
+		{
+			List<PackedItem>[] packed = Pack2(array);
+			List<PackedItem>[] shuffled = Shuffle2(packed);
+			string[,] unpacked = Unpack2(shuffled, array.Rows(), array.Columns());
+			return unpacked;
+		}
+
+		private static string[,] Unpack2(List<PackedItem>[] shuffled, int rows, int columns)
+		{
+			string[,] result = new string[rows, columns];
+
+			int i = 0;
+			foreach (List<PackedItem> row in shuffled)
+			{
+				int j = 0;
+				foreach (PackedItem item in row)
+				{
+					foreach (string s in item.Expand())
+					{
+						result[i, j] = s;
+						j++;
+					}
+				}
+				i++;
+			}
+			return result;
+		}
+
+		private static List<PackedItem>[] Shuffle2(List<PackedItem>[] packed)
+		{
+			return packed.ToList().ToArray();
+		}
+
+		private static List<PackedItem>[] Pack2(string[,] array)
+		{
+			var result = new List<PackedItem>[array.Rows()];
+
+			for (int i = 0; i < array.GetLength(0); i++)
+			{
+				var list = new List<PackedItem>();
+				for (int j = 0; j < array.GetLength(1); j++)
+				{
+					string s = array[i, j];
+
+					if (j == 0 || list.Count == 0)
+					{
+						list.Add(new PackedItem(s));
+						continue;
+					}
+
+					var last = list.Last();
+					if (s == last.Value)
+					{
+						last.Count += 1;
+						continue;
+					}
+					else
+					{
+						list.Add(new PackedItem(s));
+						continue;
+					}
+				}
+				result[i] = list;
+			}
+
+			return result;
+		}
+
+		#endregion
 
 		#region Verification
 

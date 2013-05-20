@@ -36,6 +36,45 @@ namespace ShuffleTwoDimensionalArrayConsole
 		}
 	}
 
+	public sealed class PackedItem2
+	{
+		public string Value { get; private set; }
+		public int Count { get; set; }
+		public int Row { get; private set; }
+		public int Column { get; private set; }
+
+		public PackedItem2(string value, int row, int column)
+		{
+			Value = value;
+			Count = 1;
+			Row = row;
+			Column = column;
+		}
+
+		public string[] Expand()
+		{
+			string[] result = new string[Count];
+
+			for (int i = 0; i < Count; i++)
+			{
+				result[i] = Value;
+			}
+
+			return result;
+		}
+
+		public void SetLocation(int row, int column)
+		{
+			Row = row;
+			Column = column;
+		}
+
+		public override string ToString()
+		{
+			return string.Format("[{0},{1}]{2} - {3}", Row, Column, Value, Count);
+		}
+	}
+
 	public static class Extensions
 	{
 		public static List<PackedItem> WithExcluded(this List<PackedItem> list, PackedItem item)
@@ -252,21 +291,21 @@ namespace ShuffleTwoDimensionalArrayConsole
 
 		public static string[,] Shuffle2(string[,] array)
 		{
-			List<PackedItem>[] packed = Pack2(array);
-			List<PackedItem>[] shuffled = Shuffle2(packed);
+			List<PackedItem2>[] packed = Pack2(array);
+			List<PackedItem2>[] shuffled = Shuffle2(packed);
 			string[,] unpacked = Unpack2(shuffled, array.Rows(), array.Columns());
 			return unpacked;
 		}
 
-		private static string[,] Unpack2(List<PackedItem>[] shuffled, int rows, int columns)
+		private static string[,] Unpack2(List<PackedItem2>[] shuffled, int rows, int columns)
 		{
 			string[,] result = new string[rows, columns];
 
 			int i = 0;
-			foreach (List<PackedItem> row in shuffled)
+			foreach (List<PackedItem2> row in shuffled)
 			{
 				int j = 0;
-				foreach (PackedItem item in row)
+				foreach (PackedItem2 item in row)
 				{
 					foreach (string s in item.Expand())
 					{
@@ -279,25 +318,90 @@ namespace ShuffleTwoDimensionalArrayConsole
 			return result;
 		}
 
-		private static List<PackedItem>[] Shuffle2(List<PackedItem>[] packed)
+		private static List<PackedItem2>[] Shuffle2(List<PackedItem2>[] matrix)
 		{
-			return packed.ToList().ToArray();
+			var flatten = matrix.Aggregate(seed: new List<PackedItem2>()
+								, func: (a, b) => a.Union(b).ToList());
+
+
+			foreach (PackedItem2 item in flatten)
+			{
+				int[] rowNumbers = GenerateRandoms(matrix.Length, 0, matrix.Length)
+									.Except(new[] { item.Row })
+									.ToArray();
+
+				List<PackedItem2> toSwap = GetSwapOrNull(matrix, item);
+				if (toSwap != null)
+				{
+					Swap(matrix, new List<PackedItem2> { item }, toSwap);
+				}
+				//else
+				//{
+				//	TODO: if has no swap pair -> accumulate larger pack
+				//}
+			}
+
+			return matrix;
 		}
 
-		private static List<PackedItem>[] Pack2(string[,] array)
+		private static List<PackedItem2> GetSwapOrNull(List<PackedItem2>[] matrix, PackedItem2 target)
 		{
-			var result = new List<PackedItem>[array.Rows()];
+			// TODO: implement
+			throw new NotImplementedException();
+		}
+
+		private static void Swap(List<PackedItem2>[] matrix, List<PackedItem2> itemsA, List<PackedItem2> itemsB)
+		{
+			// TODO: improve - solve adjacent items case
+			var rowA = matrix[itemsA.First().Row];
+			itemsA.ForEach(x => rowA.Remove(x));
+			itemsA.AddRange(itemsB.ToArray());
+			ReIndex(rowA);
+
+			var rowB = matrix[itemsB.First().Row];
+			itemsB.ForEach(x => rowB.Remove(x));
+			itemsB.AddRange(itemsA.ToArray());
+			ReIndex(rowB);
+		}
+
+		private static void ReIndex(List<PackedItem2> rowB)
+		{
+			int column = 0;
+			foreach (PackedItem2 item in rowB)
+			{
+				item.SetLocation(item.Row, column++);
+			}
+		}
+
+		private readonly static Random _r = new Random();
+		private static int[] GenerateRandoms(int count, int minValue, int maxValue)
+		{
+			int[] result = new int[count];
+
+			for (int i = 0; i < count; i++)
+				result[i++] = _r.Next(minValue, maxValue);
+
+			return result;
+		}
+
+		// TODO: use linkedlist as row
+		private static List<PackedItem2>[] Pack2(string[,] array)
+		{
+			var result = new List<PackedItem2>[array.Rows()];
 
 			for (int i = 0; i < array.GetLength(0); i++)
 			{
-				var list = new List<PackedItem>();
+				int packedRow = i;
+				int packedColumn = 0;
+
+				var list = new List<PackedItem2>();
 				for (int j = 0; j < array.GetLength(1); j++)
 				{
 					string s = array[i, j];
 
 					if (j == 0 || list.Count == 0)
 					{
-						list.Add(new PackedItem(s));
+						list.Add(new PackedItem2(s, packedRow, packedColumn++));
 						continue;
 					}
 
@@ -309,7 +413,7 @@ namespace ShuffleTwoDimensionalArrayConsole
 					}
 					else
 					{
-						list.Add(new PackedItem(s));
+						list.Add(new PackedItem2(s, packedRow, packedColumn++));
 						continue;
 					}
 				}
